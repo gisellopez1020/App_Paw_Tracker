@@ -66,7 +66,7 @@ export default function Home() {
     try {
       console.log("Enviando coordenadas:", coords);
 
-      const response = await fetch(`http://${API_URL}/update-location`, {
+      const response = await fetch(`${API_URL}/update-location`, {
         method: "POST",
         headers: {
           Accept: "application/json",
