@@ -32,6 +32,7 @@ export default function Login(props) {
       props.navigation.navigate("Home");
     } catch (error) {
       console.log(error);
+      Alert.alert("Error", "El usuario o la contraseña son incorrectos.");
     }
   };
 
