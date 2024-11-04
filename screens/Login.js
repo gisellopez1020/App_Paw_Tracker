@@ -8,11 +8,19 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
+import Icon from "react-native-vector-icons/FontAwesome";
+import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
 
 import appFirebase from "../credenciales";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  getReactNativePersistence,
+} from "firebase/auth";
 
-const auth = getAuth(appFirebase);
+const auth = getAuth(appFirebase, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+});
 
 export default function Login(props) {
   const [email, setEmail] = useState();
@@ -31,7 +39,7 @@ export default function Login(props) {
     <View style={styles.padre}>
       <View>
         <Image
-          source={require("../assets/profile.png")}
+          source={require("../assets/perrito1.png")}
           style={styles.profile}
         />
       </View>
@@ -41,6 +49,7 @@ export default function Login(props) {
             placeholder="correo@gmail.com"
             style={{ paddingHorizontal: 15 }}
             onChangeText={(text) => setEmail(text)}
+            placeholderTextColor="gray"
           />
         </View>
         <View style={styles.cajaTexto}>
@@ -49,11 +58,15 @@ export default function Login(props) {
             style={{ paddingHorizontal: 15 }}
             secureTextEntry={true}
             onChangeText={(text) => setPassword(text)}
+            placeholderTextColor="gray"
           />
         </View>
         <View style={styles.PadreBoton}>
           <TouchableOpacity style={styles.cajaBoton} onPress={logueo}>
-            <Text style={styles.TextoBoton}>Sign In</Text>
+            <Text style={styles.TextoBoton}>
+              Sign In
+              <Icon name="paw" size={18} color="#fff" style={styles.paw} />
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -67,12 +80,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "white",
   },
-
   profile: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 200,
+    height: 200,
+    borderRadius: 20,
     borderColor: "white",
+  },
+  paw: {
+    marginLeft: 5,
   },
   tarjeta: {
     margin: 20,
@@ -99,7 +114,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cajaBoton: {
-    backgroundColor: "#525FE1",
+    backgroundColor: "#4B9BFF",
     borderRadius: 30,
     paddingVertical: 20,
     width: 150,
@@ -108,5 +123,6 @@ const styles = StyleSheet.create({
   TextoBoton: {
     textAlign: "center",
     color: "white",
+    fontWeight: "bold",
   },
 });

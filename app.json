@@ -22,6 +22,18 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permitir a PawTracker acceder a tu ubicación en todo momento.",
+          "locationAlwaysPermission": "Permitir a PawTracker usar tu ubicación en segundo plano",
+          "locationWhenInUsePermission": "Permitir a PawTracker acceder a tu ubicación cuando la app está en uso.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ]
+    ]
   }
 }

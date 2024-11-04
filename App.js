@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, ImageBackground } from "react-native";
 import "react-native-gesture-handler";
 import { createStackNavigator } from "@react-navigation/stack";
 import { NavigationContainer } from "@react-navigation/native";
@@ -19,17 +19,27 @@ export default function App() {
             title: "LOGIN",
             headerTintColor: "white",
             headerTitleAlign: "center",
-            headerStyle: { backgroundColor: "#525FE1" },
+            headerBackground: () => (
+              <ImageBackground
+                source={require("./assets/1.png")}
+                style={{ flex: 1, width: "100%", height: "100%" }}
+              />
+            ),
           }}
         />
         <Stack.Screen
           name="Home"
           component={Home}
           options={{
-            title: "HOME",
+            title: "PawTracker",
             headerTintColor: "white",
             headerTitleAlign: "center",
-            headerStyle: { backgroundColor: "#525FE1" },
+            headerBackground: () => (
+              <ImageBackground
+                source={require("./assets/1.png")}
+                style={{ flex: 1, width: "100%", height: "100%" }}
+              />
+            ),
           }}
         />
       </Stack.Navigator>
