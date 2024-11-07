@@ -1,58 +1,33 @@
 import React, { useState, useEffect } from "react";
-import { Text, StyleSheet, View, Button } from "react-native";
+import { Text, StyleSheet, View, Button, Image } from "react-native";
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
+import { getDatabase, ref, set, onValue } from "firebase/database";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import appFirebase from "../credenciales";
 
 const LOCATION_TASK_NAME = "background-location-task";
-const API_URL = "https://api-paw-tracker.onrender.com";
 
-// Definimos la tarea antes de cualquier otro código
-TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
-  if (error) {
-    console.error("Error in background location task:", error);
-    return;
-  }
-  if (data) {
-    const { locations } = data;
-    const location = locations[0];
-    if (location) {
-      try {
-        console.log("Sending location to server:", {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        });
-
-        const response = await fetch(`${API_URL}/update-location`, {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            timestamp: new Date().toISOString(),
-          }),
-        });
-
-        const responseData = await response.json();
-        console.log("Server response:", responseData);
-
-        if (!response.ok) {
-          throw new Error(`Server responded with status ${response.status}`);
-        }
-      } catch (error) {
-        console.error("Error sending location from background:", error);
-        // Podríamos implementar aquí un sistema de reintento
-      }
-    }
-  }
-});
-
-export default function Home() {
+const Home = () => {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [isTracking, setIsTracking] = useState(false);
+
+  const db = getDatabase(appFirebase);
+  const [userId, setUserId] = useState(null);
+
+  useEffect(() => {
+    const auth = getAuth(appFirebase);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserId(user.uid);
+      } else {
+        setUserId(null);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     checkTrackingStatus();
@@ -65,7 +40,7 @@ export default function Home() {
       ).catch(() => false);
       setIsTracking(hasStarted);
     } catch (error) {
-      console.log("Error checking tracking status:", error);
+      console.log("Error al verificar el estado del seguimiento:", error);
       setIsTracking(false);
     }
   };
@@ -100,6 +75,11 @@ export default function Home() {
       const hasPermissions = await requestPermissions();
       if (!hasPermissions) return;
 
+      if (!userId) {
+        setErrorMsg("Debes iniciar sesión para usar esta funcionalidad");
+        return;
+      }
+
       // Verificar si la tarea ya está registrada
       const isRegistered = await TaskManager.isTaskRegisteredAsync(
         LOCATION_TASK_NAME
@@ -108,38 +88,21 @@ export default function Home() {
         console.log("Registrando tarea de ubicación...");
       }
 
-      // Primero enviamos la ubicación actual al servidor
+      // Obtener la ubicación inicial y enviarla a Firebase
       const initialLocation = await Location.getCurrentPositionAsync({});
-      console.log("Initial location:", initialLocation.coords);
+      await sendLocationToFirebase(
+        initialLocation.coords.latitude,
+        initialLocation.coords.longitude
+      );
 
-      try {
-        const response = await fetch(`${API_URL}/update-location`, {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            latitude: initialLocation.coords.latitude,
-            longitude: initialLocation.coords.longitude,
-            timestamp: new Date().toISOString(),
-          }),
-        });
-
-        const data = await response.json();
-        console.log("Server response for initial location:", data);
-      } catch (error) {
-        console.error("Error sending initial location:", error);
-      }
-
-      // Luego iniciamos el tracking en segundo plano
+      // Iniciar el seguimiento de ubicación en segundo plano
       await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
         accuracy: Location.Accuracy.BestForNavigation,
         timeInterval: 5000,
         distanceInterval: 5,
         showsBackgroundLocationIndicator: true,
         foregroundService: {
-          notificationTitle: "Tracking de ubicación activo",
+          notificationTitle: "Seguimiento de ubicación activo",
           notificationBody: "Rastreando tu ubicación",
         },
       });
@@ -147,7 +110,7 @@ export default function Home() {
       setLocation(initialLocation.coords);
       setIsTracking(true);
     } catch (err) {
-      console.error("Error completo:", err);
+      console.error("Error al iniciar el seguimiento:", err);
       setErrorMsg("Error al iniciar el seguimiento: " + err.message);
     }
   };
@@ -157,24 +120,64 @@ export default function Home() {
       await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
       setIsTracking(false);
     } catch (error) {
-      console.error("Error al detener:", error);
+      console.error("Error al detener el seguimiento:", error);
       setErrorMsg("Error al detener el seguimiento: " + error);
     }
   };
 
+  const sendLocationToFirebase = async (latitude, longitude) => {
+    try {
+      if (userId) {
+        const userLocationRef = ref(db, `users/${userId}/location`);
+        const colombiaTimezone = -5; // UTC-5
+        const currentTime =
+          new Date().getTime() + colombiaTimezone * 60 * 60 * 1000;
+        await set(userLocationRef, {
+          latitude,
+          longitude,
+          timestamp: new Date(currentTime).toISOString(),
+        });
+      }
+    } catch (error) {
+      console.error("Error al enviar la ubicación a Firebase:", error);
+    }
+  };
+
+  // tarea de seguimiento de ubicación en segundo plano
+  TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
+    if (error) {
+      console.error("Error en la tarea de ubicación en segundo plano:", error);
+      return;
+    }
+    if (data) {
+      const { locations } = data;
+      const location = locations[0];
+      if (location) {
+        await sendLocationToFirebase(
+          location.coords.latitude,
+          location.coords.longitude
+        );
+      }
+    }
+  });
+
   return (
     <View style={styles.container}>
       {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
-
+      <View style={styles.gifContainer}>
+        <Image
+          source={require("../assets/duke-champion.gif")}
+          style={styles.gif}
+        />
+      </View>
       {location ? (
         <View style={styles.locationInfo}>
           <Text>Latitud: {location.latitude}</Text>
           <Text>Longitud: {location.longitude}</Text>
         </View>
       ) : (
-        <Text>Obteniendo ubicación...</Text>
+        <Text>Presiona el botón para obtener tu ubicación...</Text>
       )}
-
       <View style={styles.buttonContainer}>
         {!isTracking ? (
           <Button
@@ -192,7 +195,7 @@ export default function Home() {
       </View>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -200,6 +203,13 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: "center",
     justifyContent: "center",
+  },
+  gifContainer: {
+    marginVertical: 20,
+  },
+  gif: {
+    width: 200,
+    height: 200,
   },
   locationInfo: {
     marginVertical: 20,
@@ -217,3 +227,5 @@ const styles = StyleSheet.create({
     width: "100%",
   },
 });
+
+export default Home;
