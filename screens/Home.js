@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Text, StyleSheet, View, Button, Image } from "react-native";
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
-import { getDatabase, ref, set, onValue } from "firebase/database";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import appFirebase from "../credenciales";
+import { getDatabase, ref, child, push, get, set } from "firebase/database";
+import { format } from "date-fns";
 
 const LOCATION_TASK_NAME = "background-location-task";
 
@@ -128,18 +129,44 @@ const Home = () => {
   const sendLocationToFirebase = async (latitude, longitude) => {
     try {
       if (userId) {
-        const userLocationRef = ref(db, `users/${userId}/location`);
-        const colombiaTimezone = -5; // UTC-5
-        const currentTime =
-          new Date().getTime() + colombiaTimezone * 60 * 60 * 1000;
-        await set(userLocationRef, {
+        const userLocationRef = ref(db, `users/${userId}/locations`);
+        const currentDate = format(new Date(), "yyyy-MM-dd");
+        const newLocationRef = push(child(userLocationRef, currentDate));
+        await set(newLocationRef, {
           latitude,
           longitude,
-          timestamp: new Date(currentTime).toISOString(),
+          timestamp: new Date().toISOString(),
         });
       }
     } catch (error) {
       console.error("Error al enviar la ubicación a Firebase:", error);
+    }
+  };
+
+  const getLocationHistory = async () => {
+    try {
+      if (userId) {
+        const userLocationRef = ref(db, `users/${userId}/locations`);
+        const snapshot = await get(userLocationRef);
+        if (snapshot.exists()) {
+          const locations = snapshot.val();
+          const locationHistory = Object.entries(locations).flatMap(
+            ([date, dateLocations]) =>
+              Object.values(dateLocations).map((location) => ({
+                date,
+                ...location,
+              }))
+          );
+          return locationHistory;
+        } else {
+          return [];
+        }
+      } else {
+        return [];
+      }
+    } catch (error) {
+      console.error("Error al obtener el historial de ubicaciones:", error);
+      return [];
     }
   };
 
@@ -160,6 +187,32 @@ const Home = () => {
       }
     }
   });
+
+  const DisplayLocationHistory = () => {
+    const [locationHistory, setLocationHistory] = useState([]);
+
+    useEffect(() => {
+      const fetchLocationHistory = async () => {
+        const history = await getLocationHistory();
+        setLocationHistory(history);
+      };
+      fetchLocationHistory();
+    }, []);
+
+    return (
+      <View>
+        <Text>Historial de ubicaciones:</Text>
+        {locationHistory.map((location, index) => (
+          <View key={index}>
+            <Text>Fecha: {location.date}</Text>
+            <Text>Latitud: {location.latitude}</Text>
+            <Text>Longitud: {location.longitude}</Text>
+            <Text>Hora: {new Date(location.timestamp).toLocaleString()}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
