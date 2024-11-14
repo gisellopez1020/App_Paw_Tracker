@@ -28,9 +28,9 @@ yarn-error.*
 .DS_Store
 *.pem
 
-src/credenciales.js
+src/process.env
+process.env
 
-credenciales.js
 # local env files
 .env*.local
 
