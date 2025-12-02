@@ -406,12 +406,6 @@ Este proyecto cuenta con documentación detallada para diferentes aspectos del d
   - Implementación de lectura/escritura
   - Características avanzadas
 
-- **[DIAGRAMS.md](DIAGRAMS.md)** - 🎨 Diagramas Visuales
-  - Diagramas de arquitectura
-  - Flujos de proceso
-  - Mapas de navegación
-  - Timeline de eventos
-
 ### Inicio Rápido
 
 **👨‍💻 Desarrollador:**
